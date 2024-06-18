@@ -20,7 +20,7 @@ type StreamReader struct {
 }
 
 func (r *StreamReader) Read(p []byte) (n int, err error) {
-	if r.offset_of_sector == ENDOFCHAIN {
+	if r.offset_of_sector == ENDOFCHAIN || r.offset_of_sector == FREESECT {
 		return 0, io.EOF
 	}
 	pos := r.sector_pos(r.offset_of_sector, r.size_sector) + r.offset_in_sector
@@ -41,7 +41,7 @@ func (r *StreamReader) Read(p []byte) (n int, err error) {
 			} else {
 				r.offset_of_sector = r.sat[r.offset_of_sector]
 			}
-			if r.offset_of_sector == ENDOFCHAIN {
+			if r.offset_of_sector == ENDOFCHAIN || r.offset_of_sector == FREESECT {
 				return int(readed), io.EOF
 			}
 			pos := r.sector_pos(r.offset_of_sector, r.size_sector) + r.offset_in_sector
@@ -70,7 +70,7 @@ func (r *StreamReader) Seek(offset int64, whence int) (offset_result int64, err 
 		r.offset += offset
 	}
 
-	if r.offset_of_sector == ENDOFCHAIN {
+	if r.offset_of_sector == ENDOFCHAIN || r.offset_of_sector == FREESECT {
 		return r.offset, io.EOF
 	}
 
@@ -78,7 +78,7 @@ func (r *StreamReader) Seek(offset int64, whence int) (offset_result int64, err 
 		r.offset_of_sector = r.sat[r.offset_of_sector]
 		offset -= int64(r.size_sector - r.offset_in_sector)
 		r.offset_in_sector = 0
-		if r.offset_of_sector == ENDOFCHAIN {
+		if r.offset_of_sector == ENDOFCHAIN || r.offset_of_sector == FREESECT {
 			err = io.EOF
 			goto return_res
 		}
