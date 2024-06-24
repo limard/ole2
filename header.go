@@ -35,7 +35,7 @@ func parseHeader(bts []byte) (*Header, error) {
 	header := new(Header)
 	binary.Read(buf, binary.LittleEndian, header)
 	if header.Id[0] != 0xE011CFD0 || header.Id[1] != 0xE11AB1A1 || header.Byteorder != 0xFFFE {
-		return nil, fmt.Errorf("not an excel file")
+		return nil, fmt.Errorf("ole2: not an ole2 file")
 	}
 
 	return header, nil

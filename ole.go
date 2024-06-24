@@ -16,47 +16,64 @@ type Ole struct {
 	SSecID   []uint32
 	Files    []File
 	reader   io.ReadSeeker
+
+	dirRoot *File
 }
 
-func Open(reader io.ReadSeeker, charset string) (ole *Ole, err error) {
-	var header *Header
+func Open(reader io.ReadSeeker) (ole *Ole, err error) {
 	var hbts = make([]byte, 512)
-	reader.Read(hbts)
-	if header, err = parseHeader(hbts); err == nil {
-		ole = new(Ole)
-		ole.reader = reader
-		ole.header = header
-		ole.Lsector = 512 //TODO
-		ole.Lssector = 64 //TODO
-		err = ole.readMSAT()
-		return ole, err
+	_, err = reader.Read(hbts)
+	if err != nil {
+		return nil, err
 	}
 
-	return nil, err
+	header, err := parseHeader(hbts)
+	if err != nil {
+		return nil, err
+	}
+
+	ole = new(Ole)
+	ole.reader = reader
+	ole.header = header
+	ole.Lsector = 1 << header.Lsectorb   // 512 or 4096
+	ole.Lssector = 1 << header.Lssectorb // 64
+	err = ole.readMSAT()
+	if err != nil {
+		return nil, err
+	}
+	err = ole.readDir()
+	if err != nil {
+		return nil, err
+	}
+	return ole, nil
 }
 
-func (o *Ole) ListDir() (dir []*File, err error) {
+func (o *Ole) readDir() (err error) {
+	if len(o.Files) > 0 {
+		return nil
+	}
 	sector := o.stream_read(o.header.Dirstart, 0)
-	dir = make([]*File, 0)
 	for {
-		d := new(File)
-		err = binary.Read(sector, binary.LittleEndian, d)
+		d := File{}
+		err = binary.Read(sector, binary.LittleEndian, &d)
 		if err == nil && d.Type != EMPTY {
-			dir = append(dir, d)
+			if d.Type == ROOT {
+				o.dirRoot = &d
+			}
+			o.Files = append(o.Files, d)
 		} else {
 			break
 		}
 	}
-	if err == io.EOF && dir != nil {
-		return dir, nil
+	if err == io.EOF && o.Files != nil {
+		return nil
 	}
-
 	return
 }
 
-func (o *Ole) OpenFile(file *File, root *File) io.ReadSeeker {
+func (o *Ole) OpenFile(file *File) io.ReadSeeker {
 	if file.Size < o.header.Sectorcutoff {
-		return o.short_stream_read(file.Sstart, file.Size, root.Sstart)
+		return o.short_stream_read(file.Sstart, file.Size, o.dirRoot.Sstart)
 	} else {
 		return o.stream_read(file.Sstart, file.Size)
 	}
@@ -100,9 +117,8 @@ func (o *Ole) readMSAT() error {
 		}
 	}
 
+	sid := o.header.Sfatstart
 	for i := uint32(0); i < o.header.Csfat; i++ {
-		sid := o.header.Sfatstart
-
 		if sid != ENDOFCHAIN && sid != FREESECT {
 			if sector, err := o.sector_read(sid); err == nil {
 				sids := sector.MsatValues(o.Lsector)

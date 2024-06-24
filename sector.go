@@ -17,15 +17,15 @@ func (s *Sector) NextSid(size uint32) uint32 {
 
 func (s *Sector) MsatValues(size uint32) []uint32 {
 
-	return s.values(size, int(size/4-1))
+	return s.values(int(size/4 - 1))
 }
 
 func (s *Sector) AllValues(size uint32) []uint32 {
 
-	return s.values(size, int(size/4))
+	return s.values(int(size / 4))
 }
 
-func (s *Sector) values(size uint32, length int) []uint32 {
+func (s *Sector) values(length int) []uint32 {
 
 	var res = make([]uint32, length)
 
