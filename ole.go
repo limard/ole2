@@ -9,13 +9,14 @@ var ENDOFCHAIN = uint32(0xFFFFFFFE) //-2
 var FREESECT = uint32(0xFFFFFFFF)   // -1
 
 type Ole struct {
-	header   *Header
-	Lsector  uint32
-	Lssector uint32
-	SecID    []uint32
-	SSecID   []uint32
-	Files    []File
-	reader   io.ReadSeeker
+	header    *Header
+	Lsector   uint32
+	Lssector  uint32
+	SecID     []uint32
+	SSecID    []uint32
+	RootClsID [16]byte
+	Files     []File
+	reader    io.ReadSeeker
 
 	dirRoot *File
 }
@@ -59,6 +60,7 @@ func (o *Ole) readDir() (err error) {
 		if err == nil && d.Type != EMPTY {
 			if d.Type == ROOT {
 				o.dirRoot = &d
+				o.RootClsID = d.Guid
 			}
 			o.Files = append(o.Files, d)
 		} else {

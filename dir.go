@@ -45,7 +45,7 @@ type File struct {
 	Left      uint32
 	Right     uint32
 	Child     uint32
-	Guid      [8]uint16
+	Guid      [16]byte
 	Userflags uint32
 	Time      [2]uint64
 	Sstart    uint32
