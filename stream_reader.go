@@ -1,11 +1,14 @@
 package ole2
 
 import (
+	"errors"
 	"io"
 	"log"
 )
 
 var DEBUG = false
+
+var errBadChain = errors.New("ole2: invalid sector chain")
 
 type StreamReader struct {
 	sat              []uint32
@@ -33,14 +36,9 @@ func (r *StreamReader) Read(p []byte) (n int, err error) {
 			readed += uint32(n)
 			r.offset_in_sector = 0
 			if r.offset_of_sector >= uint32(len(r.sat)) {
-				log.Fatal(`
-				THIS SHOULD NOT HAPPEN, IF YOUR PROGRAM BREAK, 
-				COMMENT THIS LINE TO CONTINUE AND MAIL ME XLS FILE 
-				TO TEST, THANKS`)
-				return int(readed), io.EOF
-			} else {
-				r.offset_of_sector = r.sat[r.offset_of_sector]
+				return int(readed), errBadChain
 			}
+			r.offset_of_sector = r.sat[r.offset_of_sector]
 			if r.offset_of_sector == ENDOFCHAIN || r.offset_of_sector == FREESECT {
 				return int(readed), io.EOF
 			}
@@ -75,6 +73,10 @@ func (r *StreamReader) Seek(offset int64, whence int) (offset_result int64, err 
 	}
 
 	for offset >= int64(r.size_sector-r.offset_in_sector) {
+		if r.offset_of_sector >= uint32(len(r.sat)) {
+			err = errBadChain
+			goto return_res
+		}
 		r.offset_of_sector = r.sat[r.offset_of_sector]
 		offset -= int64(r.size_sector - r.offset_in_sector)
 		r.offset_in_sector = 0
